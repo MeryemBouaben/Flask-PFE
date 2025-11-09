@@ -11,7 +11,7 @@ pipeline {
             steps {
                 echo ' Clonage du dépôt Git...'
                 git(
-                    url: 'https://github.com/amalmaalaoui/PFE-repo-.git',
+                    url: 'https://github.com/MeryemBouaben/Flask-PFE.git',
                     branch: 'main'
                 )
             }
@@ -21,6 +21,9 @@ pipeline {
             steps {
                 script {
                     echo ' Construction de l’image Docker...'
+                    sh 'pwd'
+                    sh 'ls -la'
+                    sh 'ls -R'
                     sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
                 }
             }
