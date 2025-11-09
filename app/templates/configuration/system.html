@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+
+{% block title %}System Information{% endblock %}
+
+{% block header %}Admin - System Information{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .card {
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        transform: translateY(-2px);
+    }
+    .card-header {
+        font-weight: 600;
+        border-radius: 10px 10px 0 0 !important;
+    }
+    .progress {
+        height: 20px;
+        border-radius: 10px;
+    }
+    .progress-bar {
+        line-height: 20px;
+    }
+    .system-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    .system-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .refresh-btn {
+        cursor: pointer;
+        transition: transform 0.5s ease;
+    }
+    .refresh-btn:hover {
+        transform: rotate(180deg);
+    }
+    .status-indicator {
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    .status-healthy {
+        background-color: #28a745;
+    }
+    .status-warning {
+        background-color: #ffc107;
+    }
+    .status-critical {
+        background-color: #dc3545;
+    }
+    .info-table th {
+        width: 40%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">System Dashboard</h1>
+        <div>
+            <span class="mr-2">Last updated: <span id="lastUpdated">{{ current_time }}</span></span>
+            <button id="refreshBtn" class="btn btn-sm btn-primary refresh-btn">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- System Status Row -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="system-label">Server Status</div>
+                            <div class="system-value" id="serverStatus">
+                                <span class="status-indicator status-healthy"></span>
+                                <span>Operational</span>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-server fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="system-label">CPU Usage</div>
+                            <div class="system-value" id="cpuUsage">--%</div>
+                            <div class="progress mt-2">
+                                <div id="cpuProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-microchip fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="system-label">Memory Usage</div>
+                            <div class="system-value" id="memoryUsage">--%</div>
+                            <div class="progress mt-2">
+                                <div id="memoryProgress" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-memory fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="system-label">Disk Usage</div>
+                            <div class="system-value" id="diskUsage">--%</div>
+                            <div class="progress mt-2">
+                                <div id="diskProgress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-hdd fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Information Row -->
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-primary text-white">
+                    <h6 class="m-0 font-weight-bold">Application Information</h6>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered info-table">
+                        <tbody>
+                            <tr>
+                                <th>Flask Version</th>
+                                <td id="flaskVersion">--</td>
+                            </tr>
+                            <tr>
+                                <th>Python Version</th>
+                                <td id="pythonVersion">--</td>
+                            </tr>
+                            <tr>
+                                <th>Database</th>
+                                <td id="database">--</td>
+                            </tr>
+                            <tr>
+                                <th>Server Uptime</th>
+                                <td id="uptime">--</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- System Health Timeline -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-secondary text-white">
+                    <h6 class="m-0 font-weight-bold">System Health History</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-area">
+                        <canvas id="healthChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize chart
+    const ctx = document.getElementById('healthChart').getContext('2d');
+    const healthChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'CPU Usage (%)',
+                    data: [],
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: 'Memory Usage (%)',
+                    data: [],
+                    borderColor: '#17a2b8',
+                    backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                },
+                {
+                    label: 'Disk Usage (%)',
+                    data: [],
+                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Function to update system info
+    function updateSystemInfo() {
+        $.get('/admin/system_info', function(data) {
+            if (data.success) {
+                // Update metrics
+                $('#cpuUsage').text(data.cpu_usage + '%');
+                $('#cpuProgress').css('width', data.cpu_usage + '%');
+                $('#memoryUsage').text(data.memory_usage + '%');
+                $('#memoryProgress').css('width', data.memory_usage + '%');
+                $('#diskUsage').text(data.disk_usage + '%');
+                $('#diskProgress').css('width', data.disk_usage + '%');
+                
+                // Update server status based on metrics
+                updateServerStatus(data);
+                
+                // Update application info
+                $('#flaskVersion').text(data.flask_version);
+                $('#pythonVersion').text(data.python_version);
+                $('#database').text(data.database);
+                $('#serverName').text(data.server);
+                $('#uptime').text(data.uptime);
+                
+                // Update last updated time
+                const now = new Date();
+                $('#lastUpdated').text(now.toLocaleString());
+                
+                // Update chart
+                updateChart(data);
+            }
+        }).fail(function() {
+            showAlert('Failed to fetch system information', 'danger');
+        });
+    }
+
+    // Function to update server status indicator
+    function updateServerStatus(data) {
+        const statusElement = $('#serverStatus');
+        const indicator = statusElement.find('.status-indicator');
+        const statusText = statusElement.find('span').last();
+        
+        // Reset classes
+        indicator.removeClass('status-healthy status-warning status-critical');
+        
+        // Determine overall status (simple logic - can be enhanced)
+        if (data.cpu_usage > 90 || data.memory_usage > 90 || data.disk_usage > 90) {
+            indicator.addClass('status-critical');
+            statusText.text('Critical');
+        } else if (data.cpu_usage > 70 || data.memory_usage > 70 || data.disk_usage > 70) {
+            indicator.addClass('status-warning');
+            statusText.text('Warning');
+        } else {
+            indicator.addClass('status-healthy');
+            statusText.text('Healthy');
+        }
+    }
+
+    // Function to update the health chart
+    function updateChart(data) {
+        const chart = healthChart;
+        const labels = chart.data.labels;
+        const datasets = chart.data.datasets;
+        
+        // Add new data point (limit to 20 points)
+        const now = new Date();
+        const timeLabel = now.getHours() + ':' + now.getMinutes() + ':' + now.getSeconds();
+        
+        if (labels.length >= 20) {
+            labels.shift();
+            datasets.forEach(dataset => dataset.data.shift());
+        }
+        
+        labels.push(timeLabel);
+        datasets[0].data.push(data.cpu_usage);
+        datasets[1].data.push(data.memory_usage);
+        datasets[2].data.push(data.disk_usage);
+        
+        chart.update();
+    }
+
+    // Function to show alert
+    function showAlert(message, type) {
+        const alert = $(`
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `);
+        
+        $('#alertsContainer').append(alert);
+        setTimeout(() => alert.alert('close'), 5000);
+    }
+
+    // Initial load
+    updateSystemInfo();
+    
+    // Set up auto-refresh every 5 seconds
+    setInterval(updateSystemInfo, 5000);
+    
+    // Manual refresh button
+    $('#refreshBtn').click(function() {
+        updateSystemInfo();
+    });
+});
+</script>
+{% endblock %}

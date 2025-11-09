@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block header %}
+<div class="text-3xl font-bold text-gray-800">📊 Dashboard Overview</div>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Total Files -->
+    <div class="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-2xl shadow-xl p-6 transition-transform hover:scale-105">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="text-sm">Total Files</p>
+                <h3 class="text-3xl font-extrabold mt-1">{{ file_stats.total_files }}</h3>
+            </div>
+            <div class="bg-white bg-opacity-20 p-3 rounded-full">
+                <i class="fas fa-file-excel text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 text-sm">
+            <span class="{{ 'text-green-200' if file_stats.change_percent >= 0 else 'text-red-200' }}">
+                <i class="fas {{ 'fa-arrow-up' if file_stats.change_percent >= 0 else 'fa-arrow-down' }} mr-1"></i>
+                {{ file_stats.change_percent|abs }}% from last week
+            </span>
+        </div>
+    </div>
+
+    <!-- Total Sheets -->
+    <div class="bg-gradient-to-r from-blue-500 to-teal-400 text-white rounded-2xl shadow-xl p-6 transition-transform hover:scale-105">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="text-sm">Total Sheets</p>
+                <h3 class="text-3xl font-extrabold mt-1">{{ file_stats.total_sheets }}</h3>
+            </div>
+            <div class="bg-white bg-opacity-20 p-3 rounded-full">
+                <i class="fas fa-layer-group text-2xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Migration Stats -->
+    <div class="bg-gradient-to-r from-green-500 to-emerald-400 text-white rounded-2xl shadow-xl p-6 transition-transform hover:scale-105">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="text-sm">Total Migrations</p>
+                <h3 class="text-3xl font-extrabold mt-1">{{ migration_stats.total_migrations }}</h3>
+            </div>
+            <div class="bg-white bg-opacity-20 p-3 rounded-full">
+                <i class="fas fa-exchange-alt text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 text-sm">
+            <span class="{{ 'text-green-200' if migration_stats.success_rate >= 80 else 'text-yellow-200' }}">
+                {{ migration_stats.success_rate }}% success rate
+            </span>
+        </div>
+    </div>
+
+    <!-- Processing Speed -->
+    <div class="bg-gradient-to-r from-amber-500 to-orange-400 text-white rounded-2xl shadow-xl p-6 transition-transform hover:scale-105">
+        <div class="flex justify-between items-center">
+            <div>
+                <p class="text-sm">Avg. Processing Time</p>
+                <h3 class="text-3xl font-extrabold mt-1">{{ migration_stats.avg_processing_time }}</h3>
+            </div>
+            <div class="bg-white bg-opacity-20 p-3 rounded-full">
+                <i class="fas fa-clock text-2xl"></i>
+            </div>
+        </div>
+        <div class="mt-4 text-sm">
+            <span class="text-white-200">
+                {{ migration_stats.fastest_migration }} fastest
+            </span>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- Migration Status Chart -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Migration Status Overview</h3>
+            <a href="{{ url_for('main.migration_track') }}" class="text-sm text-indigo-600 hover:text-indigo-800">View Migrations</a>
+        </div>
+        <div class="h-64">
+            <canvas id="migrationStatusChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Migration Timeline -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Recent Migration Activity</h3>
+            <a href="{{ url_for('main.migrator') }}" class="text-sm text-indigo-600 hover:text-indigo-800">View All</a>
+        </div>
+        <div class="h-64 overflow-y-auto">
+            <div class="space-y-4">
+                {% for migration in recent_migrations %}
+                <div class="flex items-start">
+                    <div class="flex-shrink-0 mt-1">
+                        <div class="h-3 w-3 rounded-full 
+                            {% if migration.status == 'COMPLETED' %}bg-green-500
+                            {% elif migration.status == 'failed' %}bg-red-500
+                            {% else %}bg-blue-500{% endif %}"></div>
+                    </div>
+                    <div class="ml-4">
+                        <div class="text-sm font-medium text-gray-900">
+                            {{ migration.source_file }} → {{ migration.target_file }}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            {{ migration.created_at.strftime('%b %d, %H:%M') }} • 
+                            <span class="font-medium 
+                                {% if migration.status == 'COMPLETED' %}text-green-600
+                                {% elif migration.status == 'failed' %}text-red-600
+                                {% else %}text-blue-600{% endif %}">
+                                {{ migration.status|capitalize }}
+                            </span>
+                            {% if migration.status == 'COMPLETED' %}
+                            • {{ migration.block_count }} blocks
+                            {% endif %}
+                        </div>
+                        {% if migration.error_message %}
+                        <div class="mt-1 text-xs text-red-500 truncate" title="{{ migration.error_message }}">
+                            <i class="fas fa-exclamation-circle mr-1"></i> {{ migration.error_message|truncate(50) }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Files Section -->
+<div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">Recently Uploaded Files</h3>
+        <a href="{{ url_for('main.manage_files') }}" class="text-sm text-indigo-600 hover:text-indigo-800">View All</a>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Filename</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
+                    {% if current_user.is_admin %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded By</th>
+                    {% endif %}
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sheets</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for file in recent_files %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">{{ file.filename }}</div>
+                                <div class="text-sm text-gray-500">{{ file.size }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ file.upload_date.strftime('%b %d, %Y') }}
+                    </td>
+                    {% if current_user.is_admin %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ file.user.username }}
+                    </td>
+                    {% endif %}
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                            {{ file.sheet_count }} sheets
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                            {{ 'bg-green-100 text-green-800' if file.processed else 'bg-yellow-100 text-yellow-800' }}">
+                            {{ 'Processed' if file.processed else 'Pending' }}
+                        </span>
+                    </td>
+                    {% if not current_user.is_admin %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{{ url_for('main.admin_preview_file', file_id=file.id) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>
+                        <a href="{{ url_for('main.migrator') }}" class="text-gray-600 hover:text-gray-900">Migrate</a>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if not current_user.is_admin %}
+<!-- Quick Actions -->
+<div class="bg-white rounded-2xl shadow-xl p-6">
+    <h2 class="text-xl font-semibold text-gray-700 mb-4">Quick Actions</h2>
+    <div class="grid gap-4 md:grid-cols-2">
+        <a href="{{ url_for('main.upload_file') }}" class="flex items-center p-4 rounded-xl border hover:bg-indigo-50 transition-all">
+            <div class="p-3 bg-indigo-100 text-indigo-600 rounded-full mr-4">
+                <i class="fas fa-upload"></i>
+            </div>
+            <span class="font-medium">Upload New File</span>
+        </a>
+        <a href="{{ url_for('main.add_dictionary') }}" class="flex items-center p-4 rounded-xl border hover:bg-blue-50 transition-all">
+            <div class="p-3 bg-blue-100 text-blue-600 rounded-full mr-4">
+                <i class="fas fa-book-medical"></i>
+            </div>
+            <span class="font-medium">Create New Dictionary</span>
+        </a>
+        <a href="{{ url_for('main.migrator') }}" class="flex items-center p-4 rounded-xl border hover:bg-purple-50 transition-all">
+            <div class="p-3 bg-purple-100 text-purple-600 rounded-full mr-4">
+                <i class="fas fa-exchange-alt"></i>
+            </div>
+            <span class="font-medium">Start New Migration</span>
+        </a>
+        <a href="{{ url_for('main.system_config') }}" class="flex items-center p-4 rounded-xl border hover:bg-gray-50 transition-all">
+            <div class="p-3 bg-gray-100 text-gray-600 rounded-full mr-4">
+                <i class="fas fa-cog"></i>
+            </div>
+            <span class="font-medium">System Settings</span>
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+        fetch('/api/migration_stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update the stats cards with the fetched data
+            document.querySelector('#total-migrations').textContent = data.total_migrations;
+            document.querySelector('#success-rate').textContent = data.success_rate + '%';
+            document.querySelector('#avg-processing-time').textContent = data.avg_processing_time;
+            
+            // Update the chart with the new data
+            if (window.statusChart) {
+                window.statusChart.data.datasets[0].data = [
+                    data.completed_count,
+                    data.failed_count,
+                    data.in_progress_count,
+                    data.scheduled_count
+                ];
+                window.statusChart.update();
+            }
+        });
+    const statusCtx = document.getElementById('migrationStatusChart').getContext('2d');
+    const statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed', 'Failed', 'In Progress', 'Scheduled'],
+            datasets: [{
+                data: [
+                    {{ migration_stats.completed_count }},
+                    {{ migration_stats.failed_count }},
+                    {{ migration_stats.in_progress_count }},
+                    {{ migration_stats.scheduled_count }},
+                    {{ migration_stats.pending_count }}
+                ],
+                backgroundColor: [
+                    '#10B981',
+                    '#EF4444',
+                    '#3B82F6',
+                    '#F59E0B'
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'right',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((value / total) * 100);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // Auto-refresh dashboard
+    setInterval(function () {
+        fetch(window.location.href, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const newDoc = parser.parseFromString(html, 'text/html');
+            const newContent = newDoc.querySelector('main').innerHTML;
+            document.querySelector('main').innerHTML = newContent;
+            // Reinitialize charts after refresh
+            if (typeof Chart !== 'undefined' && document.getElementById('migrationStatusChart')) {
+                statusChart.destroy();
+                const newStatusCtx = document.getElementById('migrationStatusChart').getContext('2d');
+                new Chart(newStatusCtx, statusChart.config);
+            }
+        });
+    }, 60000);
+});
+</script>
+{% endblock %}
